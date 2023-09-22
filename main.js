@@ -10,6 +10,23 @@ app.use(express.urlencoded({ extended: true }))
 app.use(bodyParser.json({ limit: '50mb' }))
 app.use(cors({ origin: '*' }))
 
+app.use(function (req, res, next) {
+    const allowedOrigins = ['https://mern-app-zkd6.vercel.app', 'http://localhost:3000','https://chimerical-moxie-5d7f1c.netlify.app',"*"];
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+       res.setHeader('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Origin', origin);
+  }
+
+    // res.header('Access-Control-Allow-Origin', 'https://mern-app-zkd6.vercel.app');
+    res.header('Access-Control-Request-Method', '*');
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    res.header('Access-Control-Expose-Headers', 'Content-Type');
+
+    next();
+});
+
 app.get('/', (req, res) => {
     res.send("GET Request Called");
     res.json("hello");
