@@ -11,7 +11,7 @@ app.use(bodyParser.json({ limit: '50mb' }))
 app.use(cors({ origin: '*' }))
 
 app.use(function (req, res, next) {
-    const allowedOrigins = ['https://mern-app-zkd6.vercel.app', 'http://localhost:3000','https://chimerical-moxie-5d7f1c.netlify.app',"*"];
+    const allowedOrigins = ['https://mern-app-zkd6.vercel.app', 'https://test-backend-peach.vercel.app','https://chimerical-moxie-5d7f1c.netlify.app',"*"];
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
        res.setHeader('Access-Control-Allow-Origin', origin);
