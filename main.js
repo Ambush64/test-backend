@@ -33,11 +33,6 @@ app.get('/', (req, res) => {
 })
 
 
-app.get('*', (req, res) => {
-    res.send("GET Request Called");
-    res.json("hello");
-})
-
 
 // Host: sql12.freesqldatabase.com
 // Database name: sql12648279
