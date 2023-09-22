@@ -10,13 +10,23 @@ app.use(express.urlencoded({ extended: true }))
 app.use(bodyParser.json({ limit: '50mb' }))
 app.use(cors({ origin: '*' }))
 
+app.get('/', (req, res) => {
+    res.send("GET Request Called");
+    res.json("hello");
+})
+
+
+app.get('*', (req, res) => {
+    res.send("GET Request Called");
+    res.json("hello");
+})
+
 
 // Host: sql12.freesqldatabase.com
 // Database name: sql12648279
 // Database user: sql12648279
 // Database password: BigXSkcAWb
 // Port number: 3306
-
 
 // Create a MySQL database connection
 const db = mysql.createConnection({
@@ -47,12 +57,6 @@ app.get("/products", (req, res) => {
     res.json(result);
   });
 });
-
-app.get('/', (req, res) => {
-    res.send("GET Request Called");
-    res.json("hello");
-})
-
 
 // Create Operation (Add a New Product)
 app.post("/products", (req, res) => {
