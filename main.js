@@ -48,6 +48,11 @@ app.get("/products", (req, res) => {
   });
 });
 
+app.get('/', (req, res) => {
+    res.send("GET Request Called");
+    res.json("hello");
+})
+
 
 // Create Operation (Add a New Product)
 app.post("/products", (req, res) => {
