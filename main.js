@@ -11,7 +11,7 @@ app.use(bodyParser.json({ limit: '50mb' }))
 app.use(cors({ origin: '*' }))
 
 app.use(function (req, res, next) {
-    const allowedOrigins = ['https://mern-app-zkd6.vercel.app', 'https://test-backend-peach.vercel.app','https://chimerical-moxie-5d7f1c.netlify.app',"*"];
+    const allowedOrigins = ['https://ambush64.github.io/test-frontend', 'https://ambush64.github.io/test-frontend/','ambush64.github.io/test-frontend',"*"];
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
        res.setHeader('Access-Control-Allow-Origin', origin);
