@@ -33,14 +33,6 @@ app.get('/', (req, res) => {
 })
 
 
-
-// Host: sql12.freesqldatabase.com
-// Database name: sql12648279
-// Database user: sql12648279
-// Database password: BigXSkcAWb
-// Port number: 3306
-
-// Create a MySQL database connection
 const db = mysql.createConnection({
   host: "sql12.freesqldatabase.com",
   user: "sql12648279",
@@ -48,7 +40,6 @@ const db = mysql.createConnection({
   database: "sql12648279",
 });
 
-// Connect to the database
 db.connect((err) => {
   if (err) {
     throw err;
@@ -56,136 +47,138 @@ db.connect((err) => {
   console.log("Connected to the MySQL database");
 });
 
-// Middleware
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
 
-// Add this route to get a list of products for the dropdown
-app.get("/products", (req, res) => {
-  const sql = "SELECT ProductID, ProductName FROM Products";
+app.get('/api/astrologers', (req, res) => {
+  const query = 'SELECT name,id,gender,mobile_number,email,experience FROM astrologer';
 
-  db.query(sql, (err, result) => {
-    if (err) throw err;
-    res.json(result);
-  });
-});
-
-// Create Operation (Add a New Product)
-app.post("/products", (req, res) => {
-  const { ProductName, Category, Price } = req.body;
-  const product = { ProductName, Category, Price };
-  const sql = "INSERT INTO Products SET ?";
-
-  db.query(sql, product, (err, result) => {
-    if (err) throw err;
-    res.json({ message: "Product added successfully", productId: result.insertId });
-  });
-});
-
-// Update the /products endpoint to retrieve product details
-app.get("/products", (req, res) => {
-  const sql = "SELECT ProductID, ProductName, Category, Price FROM Products";
-
-  db.query(sql, (err, result) => {
-    if (err) throw err;
-    res.json(result);
-  });
-});
-
-
-// Read Operation (Retrieve Order Details)
-app.get("/orders/:orderId", (req, res) => {
-  const orderId = req.params.orderId;
-  const sql = `
-    SELECT 
-      Orders.OrderID, 
-      Orders.CustomerName, 
-      Orders.OrderDate, 
-      Products.ProductName, 
-      Products.Price, 
-      Orders.Quantity 
-    FROM 
-      Orders 
-    JOIN 
-      Products ON Orders.ProductID = Products.ProductID 
-    WHERE 
-      Orders.OrderID = ?`;
-
-  db.query(sql, [orderId], (err, result) => {
-    if (err) throw err;
-    if (result.length > 0) {
-      res.json(result[0]);
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error('Error fetching astrologers:', err);
+      res.status(500).json({ error: 'Error fetching astrologers' });
     } else {
-      res.status(404).json({ message: "Order not found" });
+      res.json(results);
     }
   });
 });
 
-// Update Operation (Update Product Information)
-app.put("/products/:productId", (req, res) => {
-  const productId = req.params.productId;
-  const newPrice = req.body.Price;
-  const sql = "UPDATE Products SET Price = ? WHERE ProductID = ?";
+app.get('/api/users', (req, res) => {
+  const query = 'SELECT name,id,mobileno,wallet FROM users';
 
-  db.query(sql, [newPrice, productId], (err, result) => {
-    if (err) throw err;
-    if (result.affectedRows > 0) {
-      res.json({ message: "Product updated successfully" });
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error('Error fetching users:', err);
+      res.status(500).json({ error: 'Error fetching users' });
     } else {
-      res.status(404).json({ message: "Product not found" });
+      res.json(results);
     }
   });
 });
 
-// Delete Operation (Remove a Product)
-app.delete("/products/:productId", (req, res) => {
-  const productId = req.params.productId;
-  const sql = "DELETE FROM Products WHERE ProductID = ?";
 
-  db.query(sql, [productId], (err, result) => {
-    if (err) throw err;
-    if (result.affectedRows > 0) {
-      res.json({ message: "Product deleted successfully" });
+app.get('/api/users/:id', (req, res) => {
+  const userId = req.params.id;
+  const query = 'SELECT name, id, mobileno, wallet FROM users WHERE id = ?';
+
+  db.query(query, [userId], (err, results) => {
+
+    if (err) {
+      console.error('Error fetching user by ID:', err);
+      res.status(500).json({ error: 'Error fetching user by ID' });
+    } else if (results.length === 0) {
+      res.status(404).json({ error: 'User not found' });
     } else {
-      res.status(404).json({ message: "Product not found" });
+      res.json(results[0]);
     }
   });
 });
 
-// Join Operation (List Orders with Product Details)
-app.get("/orders", (req, res) => {
-  const sql = `
-    SELECT 
-      Orders.OrderID, 
-      Orders.CustomerName, 
-      Orders.OrderDate, 
-      Products.ProductName, 
-      Products.Price, 
-      Orders.Quantity 
-    FROM 
-      Orders 
-    JOIN 
-      Products ON Orders.ProductID = Products.ProductID`;
+app.get('/api/astrologers/:id', (req, res) => {
+  const userId = req.params.id;
+  const query = 'SELECT name,id,gender,mobile_number,email,experience FROM astrologer WHERE id = ?';
 
-  db.query(sql, (err, result) => {
-    if (err) throw err;
-    res.json(result);
-  });
-});
 
-// Create Operation (Add a New Order)
-app.post("/orders", (req, res) => {
-  const { CustomerName, OrderDate, ProductID, Quantity } = req.body;
-  const order = { CustomerName, OrderDate, ProductID, Quantity };
-  const sql = "INSERT INTO Orders SET ?";
+  db.query(query, [userId], (err, results) => {
 
-  db.query(sql, order, (err, result) => {
-    if (err) throw err;
-    res.json({ message: "Order added successfully", orderId: result.insertId });
+    if (err) {
+      console.error('Error fetching astrologer by ID:', err);
+      res.status(500).json({ error: 'Error fetching astrologer by ID' });
+    } else if (results.length === 0) {
+      res.status(404).json({ error: 'User not found' });
+    } else {
+      res.json(results[0]);
+    }
   });
 });
 
 
+// Update a user by ID
+app.put('/api/users/:id', (req, res) => {
+  const userId = req.params.id;
+  const { name, mobileno, wallet } = req.body;
+  const updateUserQuery = 'UPDATE users SET name = ?, mobileno = ?, wallet = ? WHERE id = ?';
+
+  db.query(updateUserQuery, [name, mobileno, wallet, userId], (err, result) => {
+    if (err) {
+      console.error('Error updating user:', err);
+      res.status(500).json({ error: 'Error updating user' });
+    } else if (result.affectedRows === 0) {
+      res.status(404).json({ error: 'User not found' });
+    } else {
+      res.json({ message: 'User updated successfully' });
+    }
+  });
+});
+
+
+
+app.put('/api/astrologers/:astrologerId', (req, res) => {
+  const astrologerId = req.params.astrologerId;
+  const updatedAstrologerData = req.body;
+
+  const query = 'UPDATE astrologer SET ? WHERE id = ?';
+
+  db.query(query, [updatedAstrologerData, astrologerId], (err, results) => {
+    if (err) {
+      console.error('Error updating astrologer:', err);
+      res.status(500).json({ error: 'Error updating astrologer' });
+    } else {
+      res.json({ message: 'Astrologer updated successfully' });
+    }
+  });
+});
+
+
+app.delete('/api/users/:id', (req, res) => {
+  const userId = req.params.id;
+  const deleteUserQuery = 'DELETE FROM users WHERE id = ?';
+
+  db.query(deleteUserQuery, [userId], (err, result) => {
+    if (err) {
+      console.error('Error deleting user:', err);
+      res.status(500).json({ error: 'Error deleting user' });
+    } else if (result.affectedRows === 0) {
+      res.status(404).json({ error: 'User not found' });
+    } else {
+      res.json({ message: 'User deleted successfully' });
+    }
+  });
+});
+
+app.delete('/api/astrologers/:id', (req, res) => {
+  const astrologerId = req.params.id;
+  const deleteAstrologerQuery = 'DELETE FROM astrologer WHERE id = ?';
+
+  db.query(deleteAstrologerQuery, [astrologerId], (err, result) => {
+    if (err) {
+      console.error('Error deleting astrologer:', err);
+      res.status(500).json({ error: 'Error deleting astrologer' });
+    } else if (result.affectedRows === 0) {
+      res.status(404).json({ error: 'Astrologer not found' });
+    } else {
+      res.json({ message: 'Astrologer deleted successfully' });
+    }
+  });
+});
 
 http.createServer(app).listen(port, () => {
   console.log(`server started at port ${port}`)
