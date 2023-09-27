@@ -4,7 +4,11 @@ const bodyParser = require('body-parser')
 const cors = require('cors')
 const http = require('http')
 const app = express()
+const axios = require("axios")
 const mysql = require("mysql");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+
 
 app.use(express.urlencoded({ extended: true }))
 app.use(bodyParser.json({ limit: '50mb' }))
