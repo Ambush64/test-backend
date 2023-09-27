@@ -32,6 +32,9 @@ app.get('/', (req, res) => {
 })
 
 
+
+const SECRET_KEY = "SAMPLEDATAOOWSAMPLEDATAOOWSAMPLEDATAOOWSAMPLEDATAOOWSAMPLEDATAOOW"
+
 const db = mysql.createConnection({
   host: "sql12.freesqldatabase.com",
   user: "sql12648279",
@@ -46,15 +49,127 @@ db.connect((err) => {
   console.log("Connected to the MySQL database");
 });
 
+const generateAuthToken = async function (email) {
+  try {
+    const token = jwt.sign({ _id: email }, SECRET_KEY);
+
+    db.query(
+      'UPDATE customer SET token = ? WHERE email = ?',
+      [token, email],
+      (err) => {
+        if (err) {
+          console.error(err);
+          throw err;
+        }
+        console.log('Token updated in the database');
+      }
+    );
+
+    return token;
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+
+app.post('/signup', async (req, res) => {
+  const { email, password, name, token } = req.body;
+  if (!email || !password || !name) {
+    return res.status(422).json({ error: 'Please fill in all the required fields' });
+  }
+
+  try {
+    // Check if the email already exists in the database
+    db.query('SELECT * FROM customer WHERE email = ?', [email], async (err, results) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+      if (results.length > 0) {
+        return res.status(422).json({ error: 'Email is already registered' });
+      } else {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        // Insert the user into the database
+        db.query(
+          'INSERT INTO customer (email, password,name,token) VALUES (?, ?, ?,?)',
+          [email, hashedPassword, name, token],
+          (err) => {
+            if (err) {
+              console.error(err);
+              return res.status(500).json({ error: 'Internal server error' });
+            }
+            res.status(201).json({ message: 'User registered successfully' });
+          }
+        )
+      }
+    }
+    );
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
+app.post("/signin", async (req, res) => {
+  try {
+    let token;
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "Please fill in all the required fields" });
+    }
+
+    // Check if the email exists in the database
+    db.query('SELECT * FROM customer WHERE email = ?', [email], async (err, results) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: "Internal server error" });
+      }
+
+      if (results.length === 0) {
+        return res.status(400).json({ error: "Invalid Credentials" });
+      }
+
+      const user = results[0];
+
+      // Compare the provided password with the hashed password in the database
+      bcrypt.compare(password, user.password, async (err, isMatch) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ error: "Internal server error" });
+        }
+
+        if (!isMatch) {
+          return res.status(400).json({ error: "Invalid Credentials" });
+        } else {
+          token = await generateAuthToken(user.email);
+
+          res.status(200).json({
+            message: "Login successful",
+            cookie: token
+          });
+
+          console.log("Login Successful");
+        }
+      });
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
 
 app.get('/api/astrologers', (req, res) => {
-  const query = 'SELECT name,id,gender,mobile_number,email,experience FROM astrologer';
+  const query = 'SELECT name,id,gender,mobile_number,email,experience,short_bio FROM astrologer';
 
   db.query(query, (err, results) => {
     if (err) {
       console.error('Error fetching astrologers:', err);
       res.status(500).json({ error: 'Error fetching astrologers' });
     } else {
+
       res.json(results);
     }
   });
@@ -93,7 +208,8 @@ app.get('/api/users/:id', (req, res) => {
 
 app.get('/api/astrologers/:id', (req, res) => {
   const userId = req.params.id;
-  const query = 'SELECT name,id,gender,mobile_number,email,experience FROM astrologer WHERE id = ?';
+  console.log("first")
+  const query = 'SELECT name,id,gender,mobile_number,email,experience,short_bio FROM astrologer WHERE id = ?';
 
 
   db.query(query, [userId], (err, results) => {
@@ -182,4 +298,3 @@ app.delete('/api/astrologers/:id', (req, res) => {
 http.createServer(app).listen(port, () => {
   console.log(`server started at port ${port}`)
 })
-
