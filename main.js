@@ -30,11 +30,20 @@ app.get('/', (req, res) => {
     res.json("hello");
 })
 
+const generateToken = (userId) => {
+    const jwtSecret = 'SWtJIr9-3UVNLQgqSLHi3T_xhSH2BpVp3wz8XfqCMU';
+
+
+  const tokenData = {
+    userId: userId,
+    expiresIn: '3650d', // 10 years (365 days * 10)
+  };
+
+  return jwt.sign(tokenData, jwtSecret);
+};
 
 mongoose.connect('mongodb+srv://user:BBmKsYRn4teOgSuI@cluster0.4pgnj8w.mongodb.net/test?retryWrites=true&w=majority');
 
-
-const jwtSecret = 'SWtJIr9-3UVNLQgqSLHi3T_xhSH2BpVp3wz8XfqCMU';
 
 
 const User = mongoose.model('User', {
@@ -71,7 +80,9 @@ app.post('/login', async (req, res) => {
 
 
     if (user) {
-const token = jwt.sign({ userId: user._id }, jwtSecret, { expiresIn: 'never' });
+// const token = jwt.sign({ userId: user._id }, jwtSecret, { expiresIn: 'never' });
+        const token = generateToken(user._id );
+
 console.log(1)
 
       res.json({ token });
