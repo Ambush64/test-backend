@@ -73,10 +73,11 @@ app.post('/login', async (req, res) => {
 
   try {
     const user = await User.findOne({ username, password });
+      console.log(user)
 
     if (user) {
 const token = jwt.sign({ userId: user._id }, jwtSecret, { expiresIn: 'never' });
-
+console.log(token)
 
       res.json({ token });
     } else {
