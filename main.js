@@ -4,7 +4,6 @@ const cors = require('cors')
 const app = express()
 const jwt = require("jsonwebtoken");
 const mongoose = require('mongoose');
-const session = require('express-session');
 
 app.use(express.urlencoded({ extended: true }))
 app.use(bodyParser.json({ limit: '50mb' }))
@@ -34,11 +33,7 @@ app.get('/', (req, res) => {
 
 mongoose.connect('mongodb+srv://user:BBmKsYRn4teOgSuI@cluster0.4pgnj8w.mongodb.net/test?retryWrites=true&w=majority');
 
-app.use(session({
-  secret: 'SWtJIr9-3UVNLQgqSLHi3T_xhSH2BpVp3wz8XfqCMU',
-  resave: false,
-  saveUninitialized: true,
-}));
+
 const jwtSecret = 'SWtJIr9-3UVNLQgqSLHi3T_xhSH2BpVp3wz8XfqCMU';
 
 
@@ -73,11 +68,11 @@ app.post('/login', async (req, res) => {
 
   try {
     const user = await User.findOne({ username, password });
-      console.log(user)
+
 
     if (user) {
 const token = jwt.sign({ userId: user._id }, jwtSecret, { expiresIn: 'never' });
-console.log(token)
+console.log(1)
 
       res.json({ token });
     } else {
