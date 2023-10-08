@@ -1,14 +1,10 @@
-const port = 8090
 const express = require('express')
 const bodyParser = require('body-parser')
 const cors = require('cors')
-const http = require('http')
 const app = express()
-const axios = require("axios")
-const mysql = require("mysql");
-const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-
+const mongoose = require('mongoose');
+const session = require('express-session');
 
 app.use(express.urlencoded({ extended: true }))
 app.use(bodyParser.json({ limit: '50mb' }))
@@ -36,269 +32,89 @@ app.get('/', (req, res) => {
 })
 
 
+mongoose.connect('mongodb+srv://user:BBmKsYRn4teOgSuI@cluster0.4pgnj8w.mongodb.net/test?retryWrites=true&w=majority');
 
-const SECRET_KEY = "SAMPLEDATAOOWSAMPLEDATAOOWSAMPLEDATAOOWSAMPLEDATAOOWSAMPLEDATAOOW"
+app.use(session({
+  secret: 'SWtJIr9-3UVNLQgqSLHi3T_xhSH2BpVp3wz8XfqCMU',
+  resave: false,
+  saveUninitialized: true,
+}));
+const jwtSecret = 'SWtJIr9-3UVNLQgqSLHi3T_xhSH2BpVp3wz8XfqCMU';
 
-const db = mysql.createConnection({
-  host: "sql12.freesqldatabase.com",
-  user: "sql12648279",
-  password: "BigXSkcAWb",
-  database: "sql12648279",
+
+const User = mongoose.model('User', {
+  username: String,
+  password: String,
 });
 
-db.connect((err) => {
-  if (err) {
-    throw err;
-  }
-  console.log("Connected to the MySQL database");
+const Product = mongoose.model('Product', {
+  name: String,
+  description: String,
+  price: Number,
+  imageLink: String,
 });
 
-const generateAuthToken = async function (email) {
+
+// Registration route
+app.post('/register', async (req, res) => {
+  const { username, password } = req.body;
+
+  const user = new User({ username, password });
   try {
-    const token = jwt.sign({ _id: email }, SECRET_KEY);
-
-    db.query(
-      'UPDATE customer SET token = ? WHERE email = ?',
-      [token, email],
-      (err) => {
-        if (err) {
-          console.error(err);
-          throw err;
-        }
-        console.log('Token updated in the database');
-      }
-    );
-
-    return token;
+    await user.save();
+    res.status(201).send('Registration successful');
   } catch (error) {
-    console.log(error);
+    res.status(500).send('Error registering user');
   }
-};
+});
 
-
-app.post('/signup', async (req, res) => {
-  const { email, password, name, token } = req.body;
-  if (!email || !password || !name) {
-    return res.status(422).json({ error: 'Please fill in all the required fields' });
-  }
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
 
   try {
-    // Check if the email already exists in the database
-    db.query('SELECT * FROM customer WHERE email = ?', [email], async (err, results) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ error: 'Internal server error' });
-      }
-      if (results.length > 0) {
-        return res.status(422).json({ error: 'Email is already registered' });
-      } else {
-        const hashedPassword = await bcrypt.hash(password, 10);
-        // Insert the user into the database
-        db.query(
-          'INSERT INTO customer (email, password,name,token) VALUES (?, ?, ?,?)',
-          [email, hashedPassword, name, token],
-          (err) => {
-            if (err) {
-              console.error(err);
-              return res.status(500).json({ error: 'Internal server error' });
-            }
-            res.status(201).json({ message: 'User registered successfully' });
-          }
-        )
-      }
+    const user = await User.findOne({ username, password });
+
+    if (user) {
+const token = jwt.sign({ userId: user._id }, jwtSecret, { expiresIn: 'never' });
+
+
+      res.json({ token });
+    } else {
+      res.status(401).json({ error: 'Invalid credentials' });
+
     }
-    );
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (error) {
+    res.status(500).send('Error logging in');
   }
 });
 
+app.post('/api/add-product', async (req, res) => {
+  const { name, description, price, imageLink } = req.body;
 
-app.post("/signin", async (req, res) => {
   try {
-    let token;
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: "Please fill in all the required fields" });
-    }
+    const product = new Product({ name, description, price, imageLink });
 
-    // Check if the email exists in the database
-    db.query('SELECT * FROM customer WHERE email = ?', [email], async (err, results) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ error: "Internal server error" });
-      }
+    await product.save();
 
-      if (results.length === 0) {
-        return res.status(400).json({ error: "Invalid Credentials" });
-      }
-
-      const user = results[0];
-
-      // Compare the provided password with the hashed password in the database
-      bcrypt.compare(password, user.password, async (err, isMatch) => {
-        if (err) {
-          console.error(err);
-          return res.status(500).json({ error: "Internal server error" });
-        }
-
-        if (!isMatch) {
-          return res.status(400).json({ error: "Invalid Credentials" });
-        } else {
-          token = await generateAuthToken(user.email);
-
-          res.status(200).json({
-            message: "Login successful",
-            cookie: token
-          });
-
-          console.log("Login Successful");
-        }
-      });
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(200).json({ message: 'Product added successfully' });
+  } catch (error) {
+    console.error('Failed to add product:', error);
+    res.status(500).json({ message: 'Failed to add product' });
   }
 });
 
+app.get('/products', async (req, res) => {
+  try {
+    const products = await Product.find({});
 
-
-app.get('/api/astrologers', (req, res) => {
-  const query = 'SELECT name,id,gender,mobile_number,email,experience,short_bio FROM astrologer';
-
-  db.query(query, (err, results) => {
-    if (err) {
-      console.error('Error fetching astrologers:', err);
-      res.status(500).json({ error: 'Error fetching astrologers' });
-    } else {
-
-      res.json(results);
-    }
-  });
+    res.json(products);
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    res.status(500).json({ message: 'Failed to fetch products' });
+  }
 });
 
-app.get('/api/users', (req, res) => {
-  const query = 'SELECT name,id,mobileno,wallet FROM users';
-
-  db.query(query, (err, results) => {
-    if (err) {
-      console.error('Error fetching users:', err);
-      res.status(500).json({ error: 'Error fetching users' });
-    } else {
-      res.json(results);
-    }
-  });
+// Start the server
+app.listen(8000, () => {
+  console.log('Server is running on port 8000');
 });
-
-
-app.get('/api/users/:id', (req, res) => {
-  const userId = req.params.id;
-  const query = 'SELECT name, id, mobileno, wallet FROM users WHERE id = ?';
-
-  db.query(query, [userId], (err, results) => {
-
-    if (err) {
-      console.error('Error fetching user by ID:', err);
-      res.status(500).json({ error: 'Error fetching user by ID' });
-    } else if (results.length === 0) {
-      res.status(404).json({ error: 'User not found' });
-    } else {
-      res.json(results[0]);
-    }
-  });
-});
-
-app.get('/api/astrologers/:id', (req, res) => {
-  const userId = req.params.id;
-  console.log("first")
-  const query = 'SELECT name,id,gender,mobile_number,email,experience,short_bio FROM astrologer WHERE id = ?';
-
-
-  db.query(query, [userId], (err, results) => {
-
-    if (err) {
-      console.error('Error fetching astrologer by ID:', err);
-      res.status(500).json({ error: 'Error fetching astrologer by ID' });
-    } else if (results.length === 0) {
-      res.status(404).json({ error: 'User not found' });
-    } else {
-      res.json(results[0]);
-    }
-  });
-});
-
-
-// Update a user by ID
-app.put('/api/users/:id', (req, res) => {
-  const userId = req.params.id;
-  const { name, mobileno, wallet } = req.body;
-  const updateUserQuery = 'UPDATE users SET name = ?, mobileno = ?, wallet = ? WHERE id = ?';
-
-  db.query(updateUserQuery, [name, mobileno, wallet, userId], (err, result) => {
-    if (err) {
-      console.error('Error updating user:', err);
-      res.status(500).json({ error: 'Error updating user' });
-    } else if (result.affectedRows === 0) {
-      res.status(404).json({ error: 'User not found' });
-    } else {
-      res.json({ message: 'User updated successfully' });
-    }
-  });
-});
-
-
-
-app.put('/api/astrologers/:astrologerId', (req, res) => {
-  const astrologerId = req.params.astrologerId;
-  const updatedAstrologerData = req.body;
-
-  const query = 'UPDATE astrologer SET ? WHERE id = ?';
-
-  db.query(query, [updatedAstrologerData, astrologerId], (err, results) => {
-    if (err) {
-      console.error('Error updating astrologer:', err);
-      res.status(500).json({ error: 'Error updating astrologer' });
-    } else {
-      res.json({ message: 'Astrologer updated successfully' });
-    }
-  });
-});
-
-
-app.delete('/api/users/:id', (req, res) => {
-  const userId = req.params.id;
-  const deleteUserQuery = 'DELETE FROM users WHERE id = ?';
-
-  db.query(deleteUserQuery, [userId], (err, result) => {
-    if (err) {
-      console.error('Error deleting user:', err);
-      res.status(500).json({ error: 'Error deleting user' });
-    } else if (result.affectedRows === 0) {
-      res.status(404).json({ error: 'User not found' });
-    } else {
-      res.json({ message: 'User deleted successfully' });
-    }
-  });
-});
-
-app.delete('/api/astrologers/:id', (req, res) => {
-  const astrologerId = req.params.id;
-  const deleteAstrologerQuery = 'DELETE FROM astrologer WHERE id = ?';
-
-  db.query(deleteAstrologerQuery, [astrologerId], (err, result) => {
-    if (err) {
-      console.error('Error deleting astrologer:', err);
-      res.status(500).json({ error: 'Error deleting astrologer' });
-    } else if (result.affectedRows === 0) {
-      res.status(404).json({ error: 'Astrologer not found' });
-    } else {
-      res.json({ message: 'Astrologer deleted successfully' });
-    }
-  });
-});
-
-http.createServer(app).listen(port, () => {
-  console.log(`server started at port ${port}`)
-})
