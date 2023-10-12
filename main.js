@@ -17,6 +17,15 @@ const client = new MongoClient(mongoURI);
 
 const jwtSecret = 'SWtJIr9-3UVNLQgqSLHi3T_xhSH2BpVp3wz8XfqCMU';
 
+app.get('/', async (req, res) => {
+  try {
+
+    res.json("Hello");
+  } catch (error) {
+    console.log(error)
+  }
+});
+
 // get customers
 app.get('/customers', async (req, res) => {
   try {
