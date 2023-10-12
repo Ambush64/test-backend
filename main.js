@@ -3,66 +3,124 @@ const bodyParser = require('body-parser')
 const cors = require('cors')
 const app = express()
 const jwt = require("jsonwebtoken");
-const mongoose = require('mongoose');
+// const mongoose = require('mongoose');
+const { MongoClient } = require('mongodb');
 
 app.use(express.urlencoded({ extended: true }))
-app.use(bodyParser.json({ limit: '50mb' }))
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors({ origin: '*' }))
 
-app.use(function (req, res, next) {
-    const allowedOrigins = ['https://ambush64.github.io/test-frontend', 'https://ambush64.github.io/test-frontend/','ambush64.github.io/test-frontend',"*"];
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-       res.setHeader('Access-Control-Allow-Origin', origin);
-      res.header('Access-Control-Allow-Origin', origin);
+// mongoose.connect('mongodb+srv://user:BBmKsYRn4teOgSuI@cluster0.4pgnj8w.mongodb.net/test?retryWrites=true&w=majority');
+const mongoURI = 'mongodb://127.0.0.1:27017/test-db';
+const client = new MongoClient(mongoURI);
+
+const jwtSecret = 'SWtJIr9-3UVNLQgqSLHi3T_xhSH2BpVp3wz8XfqCMU';
+
+// get customers
+app.get('/customers', async (req, res) => {
+  try {
+    await client.connect();
+
+    const collection = client.db().collection('customers');
+
+    const customers = await collection.find({ active: true }).toArray();
+
+    res.json(customers);
+  } catch (error) {
+    console.error('Error fetching customers:', error);
+    res.status(500).json({ error: 'Error fetching customers' });
+  } finally {
+    await client.close();
   }
-
-    // res.header('Access-Control-Allow-Origin', 'https://mern-app-zkd6.vercel.app');
-    res.header('Access-Control-Request-Method', '*');
-    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-    res.header('Access-Control-Expose-Headers', 'Content-Type');
-    next();
 });
 
-app.get('/', (req, res) => {
-    res.send("GET Request Called");
-    res.json("hello");
-})
+// get list-transaction
+app.post('/list-transaction', async (req, res) => {
+  try {
+    await client.connect();
 
-const generateToken = (userId) => {
-    const jwtSecret = 'SWtJIr9-3UVNLQgqSLHi3T_xhSH2BpVp3wz8XfqCMU';
+    const collection = client.db().collection('transactions');
+    const id = req.body.id;
+    const transactions = await collection.findOne({ account_id: Number(id) });
 
-
-  const tokenData = {
-    userId: userId,
-    expiresIn: '3650d', // 10 years (365 days * 10)
-  };
-
-  return jwt.sign(tokenData, jwtSecret);
-};
-
-mongoose.connect('mongodb+srv://user:BBmKsYRn4teOgSuI@cluster0.4pgnj8w.mongodb.net/test?retryWrites=true&w=majority');
-
-
-
-const User = mongoose.model('User', {
-  username: String,
-  password: String,
+    res.json(transactions);
+  } catch (error) {
+    console.error('Error fetching customers:', error);
+    res.status(500).json({ error: 'Error fetching customers' });
+  } finally {
+    await client.close();
+  }
 });
 
-const Product = mongoose.model('Product', {
-  name: String,
-  description: String,
-  price: Number,
-  imageLink: String,
+// get transaction <5000
+app.get('/account-transaction', async (req, res) => {
+  try {
+    await client.connect();
+
+    const collection = client.db().collection('transactions');
+
+    const pipeline = [
+      {
+        $match: {
+          "transactions.amount": { $lt: 5000 }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          account_id: 1
+        }
+      }
+    ];
+
+    const customers = await collection.aggregate(pipeline).toArray();
+
+    res.json(customers);
+  } catch (error) {
+    console.error('Error fetching customers:', error);
+    res.status(500).json({ error: 'Error fetching customers' });
+  } finally {
+    await client.close();
+  }
 });
 
+// get distinct-products
+app.get('/distinct-products', async (req, res) => {
+  try {
+    await client.connect();
+
+    const collection = client.db().collection('accounts');
+
+    const pipeline = [
+      {
+        $unwind: '$products'
+      },
+      {
+        $group: {
+          _id: null,
+          distinctProducts: { $addToSet: '$products' }
+        }
+      }
+    ];
+
+    const result = await collection.aggregate(pipeline).toArray();
+    const distinctProducts = result.length > 0 ? result[0].distinctProducts : [];
+
+    res.json(distinctProducts);
+  } catch (error) {
+    console.error('Error fetching distinct products:', error);
+    res.status(500).json({ error: 'Error fetching distinct products' });
+  } finally {
+    await client.close();
+  }
+});
 
 // Registration route
 app.post('/register', async (req, res) => {
   const { username, password } = req.body;
 
+  // Create a new user document
   const user = new User({ username, password });
   try {
     await user.save();
@@ -72,18 +130,15 @@ app.post('/register', async (req, res) => {
   }
 });
 
+// Login route
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
   try {
     const user = await User.findOne({ username, password });
 
-
     if (user) {
-// const token = jwt.sign({ userId: user._id }, jwtSecret, { expiresIn: 'never' });
-        const token = generateToken(user._id );
-
-console.log(1)
+      const token = jwt.sign({ userId: user._id }, jwtSecret, { expiresIn: 'never' });
 
       res.json({ token });
     } else {
@@ -95,31 +150,6 @@ console.log(1)
   }
 });
 
-app.post('/api/add-product', async (req, res) => {
-  const { name, description, price, imageLink } = req.body;
-
-  try {
-    const product = new Product({ name, description, price, imageLink });
-
-    await product.save();
-
-    res.status(200).json({ message: 'Product added successfully' });
-  } catch (error) {
-    console.error('Failed to add product:', error);
-    res.status(500).json({ message: 'Failed to add product' });
-  }
-});
-
-app.get('/products', async (req, res) => {
-  try {
-    const products = await Product.find({});
-
-    res.json(products);
-  } catch (error) {
-    console.error('Error fetching products:', error);
-    res.status(500).json({ message: 'Failed to fetch products' });
-  }
-});
 
 // Start the server
 app.listen(8000, () => {
